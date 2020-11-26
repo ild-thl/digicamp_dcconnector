@@ -1,0 +1,21 @@
+<?php
+// error_reporting(E_ALL);
+// ini_set('display_errors', 1);
+
+$DCC_CFG = new stdClass();
+
+// script configuration
+$DCC_CFG->script = 'poll_messages.php'; // this is the script that will be executed on commandline
+$DCC_CFG->maxreceivedage = 60*60*24*8; // maximum age of requests, that will be processed/replied
+$DCC_CFG->maxfileage = 60*60*24*7; // logfiles and temporary files, older than this, will be deleted automaticly
+
+// connector configuration
+$DCC_CFG->connectorid = 'yourconnectorid'; // id of your connector
+$DCC_CFG->xapikey = 'yourapikey';
+$DCC_CFG->host = 'https://yourhost.idas.solutions';
+$DCC_CFG->testsender = 'yourtestwalletid'; // Wallet id for test mode
+
+// blockchain configuration
+$DCC_CFG->blockchainurl = 'http://certotrust-01.th-luebeck.de:57010';
+$DCC_CFG->failoverurl = 'http://certotrust-01.th-luebeck.de:57010';
+$DCC_CFG->chainid = 10;
