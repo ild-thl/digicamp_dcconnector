@@ -1,12 +1,9 @@
 <?php
-// error_reporting(E_ALL);
-// ini_set('display_errors', 1);
-
 $DCC_CFG = new stdClass();
 
 // script configuration
 $DCC_CFG->script = 'poll_messages.php'; // this is the script that will be executed on commandline
-$DCC_CFG->maxreceivedage = 60*60*24*8; // maximum age of requests, that will be processed/replied
+$DCC_CFG->maxreceivedage = 60*60*24*7; // maximum age of requests, that will be processed/replied
 $DCC_CFG->maxfileage = 60*60*24*7; // logfiles and temporary files, older than this, will be deleted automaticly
 
 // connector configuration

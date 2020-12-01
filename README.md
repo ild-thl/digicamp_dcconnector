@@ -16,7 +16,7 @@ For detaching metadata from PDF files, you need to install Poppler (https://popp
 
 `yum install poppler poppler-utils`
 
-Rename config.php.dist to config.php and customise it or use default values
+Copy config.php.dist to config.php and customise it or use default values
 
 To start service
 

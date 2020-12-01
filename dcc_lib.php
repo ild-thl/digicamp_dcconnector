@@ -149,7 +149,9 @@ function get_lastlogs() {
 // Maximum age will be checked before.
 function received($message) {
     // check last available log (requestlog_...) with content
+    //echo '<pre>'; var_dump($message); echo '</pre>';
     $lines = get_lastlogs();
+    //echo '<pre>'; var_dump($lines); echo '</pre>';
     if (count($lines) > 0) {
         $youngest = get_requestlog_element($lines[0], 'arrived');
         $youngest = strtotime($youngest);
@@ -160,16 +162,24 @@ function received($message) {
             }
         }
         $arrived = strtotime($message->arrivedInMessages);
+        //echo '<p>'.$message->id.' $arrived: '.$arrived.' $youngest: '.$youngest.'</p>';
         if ($arrived > $youngest) {
             return false;
+        } else {
+            return true;
         }
     }
-    return true;
+    return false;
 }
 
 function get_new_messages($all_messages, $type) {
     global $DCC_CFG;
     $new_messages = array();
+    // check config
+    if ($DCC_CFG->maxreceivedage > $DCC_CFG->maxfileage) {
+        log_event('error', '$DCC_CFG->maxreceivedage must not be higher than $DCC_CFG->maxfileage!');
+        return $new_messages;
+    }
     foreach($all_messages as $result) {
         if (isset($result->content->type) and  $result->content->type == $type) {
             // Use messages that have not reached maximum age only ($DCC_CFG->maxreceivedage).

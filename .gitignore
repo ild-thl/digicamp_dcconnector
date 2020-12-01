@@ -4,3 +4,4 @@ temp/*
 
 composer.lock
 config.php
+test.php
