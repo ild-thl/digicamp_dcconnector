@@ -11,6 +11,7 @@ $DCC_CFG->connectorid = 'yourconnectorid'; // id of your connector
 $DCC_CFG->xapikey = 'yourapikey';
 $DCC_CFG->host = 'https://yourhost.idas.solutions';
 $DCC_CFG->testsender = 'yourtestwalletid'; // Wallet id for test mode
+$DCC_CFG->testmode = true;
 
 // blockchain configuration
 $DCC_CFG->blockchainurl = 'http://certotrust-01.th-luebeck.de:57010';
