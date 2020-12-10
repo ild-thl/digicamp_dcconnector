@@ -219,7 +219,26 @@ function check_certificate_revocation_requests($connectorid, $xapikey, $host, $t
             $connectorid = $DCC_CFG->testsender;
         }
         if (count($result->recipients) == 1 and $result->recipients[0]->id == $connectorid) {
-            if (revoke_certificate($result->content->hash, $result->content->pk)) {
+            $hash = '';
+            if (isset($result->attachments) and count($result->attachments) == 1) { // If we have an attachment
+                $fileid = $result->attachments[0]->id;
+                $file_data = callAPI('GET', $host.'/api/v1/Files/'.$fileid.'/Download', false, $xapikey);
+                $originalfilename = $result->attachments[0]->filename;
+                if (substr($originalfilename, strlen($originalfilename) - strlen('.bcrt')) == '.bcrt' or
+                    $result->attachments[0]->mimetype == 'application/json') { // Is the attachment a bcrt/json file?
+                        $hash = calculate_hash($file_data);
+                } else if ($result->attachments[0]->mimetype == 'application/pdf') { // Is the attachment a pdf file?
+                    $filename = './temp/'.uniqid();
+                    file_put_contents($filename, $file_data);
+                    if ($json = detach_json($filename)) {
+                        $hash = calculate_hash($json);
+                    }
+                    unlink($filename);
+                }
+            } else {
+                $hash = $result->content->hash;
+            }
+            if (revoke_certificate($hash, $result->content->pk)) {
                 $sendresult = send_request_result($sender,
                                                   $result->content->id,
                                                   'CertificateRevocationResult',
@@ -263,7 +282,10 @@ function check_certificate_revocation_requests($connectorid, $xapikey, $host, $t
     "startdate":"1606125262",
     "enddate":"0",
     "pk":"E31219B838B81B8FB3D84C54BD6E994DC7A08F91D1E343222E2E0051A72D9EEF"
-  }
+  },
+    "attachments": [
+        "FILfaVvc7ytTH2CnbfIS"
+    ]
 }
 */
 function check_certificate_storage_requests($connectorid, $xapikey, $host, $testmode = false) {
@@ -279,25 +301,47 @@ function check_certificate_storage_requests($connectorid, $xapikey, $host, $test
             $connectorid = $DCC_CFG->testsender;
         }
         if (count($result->recipients) == 1 and $result->recipients[0]->id == $connectorid) {
-            $hashes = store_certificate($result->content->hash,
-                                        $result->content->startdate,
-                                        $result->content->enddate,
-                                        $result->content->pk);
+            if (isset($result->content->hash) and $result->content->hash != '') { // If we have only the hash
+                $hashes = store_certificate($result->content->hash,
+                                            $result->content->startdate,
+                                            $result->content->enddate,
+                                            $result->content->pk);
+            } elseif (isset($result->attachments) and count($result->attachments) == 1) { // If we have an attachment
+                /*
+                // TODO: 
+                // While storing certificate in blockchain, some more informations need to be added to metadata
+                // We can only receive a bcrt/json file and output a new file with added informations as result
+                // maybe we can also generate a pdf
+                $fileid = $result->attachments[0]->id;
+                $file_data = callAPI('GET', $host.'/api/v1/Files/'.$fileid.'/Download', false, $xapikey);
+                $originalfilename = $result->attachments[0]->filename;
+                if (substr($originalfilename, strlen($originalfilename) - strlen('.bcrt')) == '.bcrt' or
+                    $result->attachments[0]->mimetype == 'application/json') { // Is the attachment a bcrt/json file?
+                        // TODO add info $file_data
+                        $hash = calculate_hash($file_data);
+                        $hashes = store_certificate($hash,
+                                            $result->content->startdate,
+                                            $result->content->enddate,
+                                            $result->content->pk);
+                }
+                */
+            }
+            // Has certificate been successfully stored?
             if (isset($hashes->txhash)) {
                 $sendresult = send_request_result($sender,
-                                                  $result->content->id,
-                                                  'CertificateStorageResult',
-                                                  'true',
-                                                  $host,
-                                                  $xapikey);
+                                                $result->content->id,
+                                                'CertificateStorageResult',
+                                                'true',
+                                                $host,
+                                                $xapikey);
                 $resultarray[] = get_checked_request($sender, $result->content->id, 'CertificateStorageRequest', 'true', $sendresult);
             } else {
                 $sendresult = send_request_result($sender,
-                                                  $result->content->id,
-                                                  'CertificateStorageResult',
-                                                  'false',
-                                                  $host,
-                                                  $xapikey);
+                                                $result->content->id,
+                                                'CertificateStorageResult',
+                                                'false',
+                                                $host,
+                                                $xapikey);
                 $resultarray[] = get_checked_request($sender, $result->content->id, 'CertificateStorageRequest', 'false', $sendresult);
             }
         } else {
