@@ -17,3 +17,4 @@ $DCC_CFG->testmode = true;
 $DCC_CFG->blockchainurl = 'http://certotrust-01.th-luebeck.de:57010';
 $DCC_CFG->failoverurl = 'http://certotrust-01.th-luebeck.de:57010';
 $DCC_CFG->chainid = 10;
+$DCC_CFG->verifyaddress = 'https://dclms.th-luebeck.de/mod/ilddigitalcert/verify.php';

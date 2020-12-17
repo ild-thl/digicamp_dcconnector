@@ -64,6 +64,40 @@ function callAPI($method, $url, $data, $xapikey){
     return $result;
 }
 
+function callAPIjsonUpload($filename, $title, $description, $url, $xapikey) {
+    $ch = curl_init();
+    $headers = array('X-API-KEY: '.$xapikey,
+                     'Content-Type:multipart/form-data'); // cURL headers for file uploading
+    //$postfields = array("filedata" => "@$filedata", "filename" => $filename);
+    $tenyearslater = intval(date('Y', time())) + 10;
+    $fields = [
+        'file' => new \CurlFile($filename, 'application/json', $filename),
+        'description' => $description,
+        'title' => $title,
+        'expiresAt' => $tenyearslater.'-01-01T00:00:00.000Z'
+    ];
+    $options = array(
+        CURLOPT_URL => $url,
+        //CURLOPT_HEADER => true,
+        CURLOPT_POST => 1,
+        CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_POSTFIELDS => $fields,
+        //CURLOPT_INFILESIZE => $filesize,
+        CURLOPT_RETURNTRANSFER => true
+    ); // cURL options
+    curl_setopt_array($ch, $options);
+    $result = curl_exec($ch);
+    if(!curl_errno($ch)) {
+        $info = curl_getinfo($ch);
+        if ($info['http_code'] == 200)
+            $errmsg = "File uploaded successfully";
+        return $result;
+    } else {
+        $errmsg = curl_error($ch);
+    }
+    curl_close($ch);
+}
+
 function log_received_request($messageid, $requesttype, $arrivedInMessages, $valid = 'n.a.') {
     $eol = PHP_EOL;
     $filename = './log/requestlog_'.date("Ymd", time()).'.log';
@@ -307,33 +341,57 @@ function check_certificate_storage_requests($connectorid, $xapikey, $host, $test
                                             $result->content->enddate,
                                             $result->content->pk);
             } elseif (isset($result->attachments) and count($result->attachments) == 1) { // If we have an attachment
-                /*
-                // TODO: 
-                // While storing certificate in blockchain, some more informations need to be added to metadata
+                // After storing certificate in blockchain, some more (verification) informations need to be added to metadata
                 // We can only receive a bcrt/json file and output a new file with added informations as result
-                // maybe we can also generate a pdf
+                // TODO maybe we can also generate a pdf
                 $fileid = $result->attachments[0]->id;
                 $file_data = callAPI('GET', $host.'/api/v1/Files/'.$fileid.'/Download', false, $xapikey);
                 $originalfilename = $result->attachments[0]->filename;
                 if (substr($originalfilename, strlen($originalfilename) - strlen('.bcrt')) == '.bcrt' or
                     $result->attachments[0]->mimetype == 'application/json') { // Is the attachment a bcrt/json file?
-                        // TODO add info $file_data
                         $hash = calculate_hash($file_data);
                         $hashes = store_certificate($hash,
                                             $result->content->startdate,
                                             $result->content->enddate,
                                             $result->content->pk);
+                        if (isset($hashes->txhash)) {
+                            // TODO We cannot add a signature (SignatureB4E) because we have no information about the certifier.
+                            // Maybe we should receive it by the request.
+                            // Add verification.
+                            $metadata = json_decode($file_data);
+                            $metadata->verification = new stdClass();
+                            $metadata->verification->{'extensions:verifyB4E'} = get_extension_verify_b4e($hash);
+                            $json = json_encode($metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+                            $name = explode('.', $originalfilename);
+                            $filename = 'temp/'.$name[0].'_verify_'.uniqid().'.'.$name[count($name) - 1];
+                            $title = $name[0].'_verify_'.uniqid().'.'.$name[count($name) - 1];
+                            file_put_contents($filename, $json);
+                            // upload file ($json)
+                            $description = 'Digital certificate, registered and signed in blockchain with additional information (extensions:verifyB4E)';
+                            $upload_result = callAPIjsonUpload($filename, $title, $description, $DCC_CFG->host.'/api/v1/Files', $DCC_CFG->xapikey);
+                            $resultobj = json_decode($upload_result);
+                            if (isset($resultobj->result->id)) {
+                                $newfileid = $resultobj->result->id;
+                            }
+                            unlink($filename);
+                        }
                 }
-                */
             }
             // Has certificate been successfully stored?
             if (isset($hashes->txhash)) {
+                $attachmentid = '';
+                if (isset($newfileid)) {
+                    // Put id as attachment into result
+                    $attachmentid = $newfileid;
+                }
                 $sendresult = send_request_result($sender,
-                                                $result->content->id,
-                                                'CertificateStorageResult',
-                                                'true',
-                                                $host,
-                                                $xapikey);
+                                                    $result->content->id,
+                                                    'CertificateStorageResult',
+                                                    'true',
+                                                    $host,
+                                                    $xapikey,
+                                                    $attachmentid
+                                                );
                 $resultarray[] = get_checked_request($sender, $result->content->id, 'CertificateStorageRequest', 'true', $sendresult);
             } else {
                 $sendresult = send_request_result($sender,
@@ -488,13 +546,16 @@ function check_certificate_validation_requests($connectorid, $xapikey, $host, $v
   }
 }
 */
-function send_request_result($recipient, $requestid, $type, $valid, $host, $xapikey) {
+function send_request_result($recipient, $requestid, $type, $valid, $host, $xapikey, $attachmentid = '') {
     $data = new stdClass();
     $data->recipients = array($recipient);
     $data->content = new stdClass();
     $data->content->type = $type;
     $data->content->requestid = $requestid;
     $data->content->valid = $valid;
+    if ($attachmentid != '') {
+        $data->attachments = array($attachmentid);
+    }
     return callAPI('POST', $host.'/api/v1/Messages', json_encode($data), $xapikey);
 }
 
@@ -586,4 +647,14 @@ function calculate_hash($metadatajson) {
     $metadatajson = json_encode($metadatajson, JSON_UNESCAPED_SLASHES);
     $hash = '0x'.hash('sha256', $metadatajson);
     return $hash;
+}
+
+function get_extension_verify_b4e($hash) {
+    global $DCC_CFG;
+    $verification = new stdClass();
+    $verification->verifyaddress = $DCC_CFG->verifyaddress.'?hash='.$hash;
+    $verification->type = array('Extension', 'VerifyB4E');
+    $verification->assertionhash = 'sha256$'.substr($hash, 2);
+    $verification->{'@context'} = 'https://perszert.fit.fraunhofer.de/publicSchemaB4E/VerifyB4E/context.json';
+    return $verification;
 }
