@@ -1,0 +1,10 @@
+{
+    "recipients": [
+        "MO1CbzTP203fjjv4lRmw"
+    ],
+    "content": {
+        "type": "CertificateValidationRequest",
+        "id": "1"
+    },
+    "attachments": ["FILxEf9V2C7Thg6uPp7M"]
+}

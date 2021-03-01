@@ -1,0 +1,11 @@
+{
+    "recipients": [
+        "MO1CbzTP203fjjv4lRmw"
+    ],
+    "content": {
+        "type": "CertificateRevocationRequest",
+        "id": "1",
+        "hash": "0x2583fbe94ce2e1418f3ab61029b80c36a5ad8a2409ea26e8124b7970b61700c7",
+        "pk": "D61219B838D8808FD3D84C54BD6E2395D7208F91D1E34342BE2E0051A70D9BAF"
+    }
+}

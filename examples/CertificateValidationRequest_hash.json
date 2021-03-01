@@ -1,0 +1,10 @@
+{
+    "recipients": [
+        "8dcOW26kIvK37rFtb88z"
+    ],
+    "content": {
+        "type": "CertificateValidationRequest",
+        "hash": "0x2583fbe94ce2e1418f3ab61029b80c36a5ad8a2409ea26e8124b7970b61700c7",
+        "id": "1"
+    }
+}
